@@ -173,6 +173,22 @@ body{overflow:hidden;width:100vw;height:100vh;font-family:'Tahoma',sans-serif;fo
   backdrop-filter:blur(4px);white-space:nowrap;
 }
 #game-msg.visible{display:block;}
+
+/* ── Game Over Overlay ── */
+#gameover-overlay{
+  display:none;position:absolute;inset:0;background:rgba(0,0,0,.72);
+  z-index:2500;align-items:center;justify-content:center;
+}
+#gameover-overlay.open{display:flex;}
+.gameover-box{
+  background:#ece9d8;border:2px solid #0831a0;border-radius:6px;
+  padding:28px 36px;text-align:center;box-shadow:2px 2px 16px rgba(0,0,0,.7);
+  min-width:240px;
+}
+.gameover-box .go-icon{font-size:48px;margin-bottom:10px;}
+.gameover-box h2{color:#003399;font-size:17px;margin-bottom:6px;}
+.gameover-box p{font-size:12px;color:#555;margin-bottom:18px;}
+.gameover-box .xp-btn{font-size:12px;padding:0 22px;height:26px;}
 #ai-thinking{
   display:none;position:absolute;bottom:12px;left:50%;transform:translateX(-50%);
   background:rgba(0,20,60,.9);color:#88ccff;font-size:11px;
@@ -277,6 +293,14 @@ body{overflow:hidden;width:100vw;height:100vh;font-family:'Tahoma',sans-serif;fo
         </div>
         <div id="game-msg"></div>
         <div id="ai-thinking">AI is thinking…</div>
+        <div id="gameover-overlay">
+          <div class="gameover-box">
+            <div class="go-icon" id="go-icon">♟</div>
+            <h2 id="go-title">Oyun Bitti</h2>
+            <p id="go-desc"></p>
+            <button class="xp-btn primary" id="go-newgame-btn">▶ New Game</button>
+          </div>
+        </div>
         <div id="promo-dialog">
           <div class="promo-box">
             <h3>Promote Pawn</h3>
@@ -378,7 +402,7 @@ var Chess=(function(){
       if(t===B||t===Q){for(var dd=0,bd=[[-1,-1],[-1,1],[1,-1],[1,1]];dd<4;dd++){for(var k=1;k<8;k++){var nr=r+bd[dd][0]*k,nf=f+bd[dd][1]*k;if(!inB(nr,nf))break;var dst=sq(nr,nf);if(!b[dst]){mv.push({from:idx,to:dst,fl:''});continue;}if(col(b[dst])===op)mv.push({from:idx,to:dst,fl:''});break;}}}
       if(t===R||t===Q){for(var dd=0,rd=[[-1,0],[1,0],[0,-1],[0,1]];dd<4;dd++){for(var k=1;k<8;k++){var nr=r+rd[dd][0]*k,nf=f+rd[dd][1]*k;if(!inB(nr,nf))break;var dst=sq(nr,nf);if(!b[dst]){mv.push({from:idx,to:dst,fl:''});continue;}if(col(b[dst])===op)mv.push({from:idx,to:dst,fl:''});break;}}}
       if(t===K){
-        for(var dd=0,kd=[[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];dd<8;dd++){var nr=r+kd[dd][0],nf=f+kd[dd][1];if(!inB(nr,nf))continue;var dst=sq(nr,nf);if(!b[dst]||col(b[dst])===op)mv.push({from:idx,to:dst,fl:'']);}
+        for(var dd=0,kd=[[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];dd<8;dd++){var nr=r+kd[dd][0],nf=f+kd[dd][1];if(!inB(nr,nf))continue;var dst=sq(nr,nf);if(!b[dst]||col(b[dst])===op)mv.push({from:idx,to:dst,fl:''});}
         if(c===WHITE&&r===0){if(ca.WK&&!b[sq(0,5)]&&!b[sq(0,6)]&&!atk(s,sq(0,4),op)&&!atk(s,sq(0,5),op)&&!atk(s,sq(0,6),op))mv.push({from:idx,to:sq(0,6),fl:'ck'});if(ca.WQ&&!b[sq(0,3)]&&!b[sq(0,2)]&&!b[sq(0,1)]&&!atk(s,sq(0,4),op)&&!atk(s,sq(0,3),op)&&!atk(s,sq(0,2),op))mv.push({from:idx,to:sq(0,2),fl:'cq'});}
         else if(c===BLACK&&r===7){if(ca.BK&&!b[sq(7,5)]&&!b[sq(7,6)]&&!atk(s,sq(7,4),op)&&!atk(s,sq(7,5),op)&&!atk(s,sq(7,6),op))mv.push({from:idx,to:sq(7,6),fl:'ck'});if(ca.BQ&&!b[sq(7,3)]&&!b[sq(7,2)]&&!b[sq(7,1)]&&!atk(s,sq(7,4),op)&&!atk(s,sq(7,3),op)&&!atk(s,sq(7,2),op))mv.push({from:idx,to:sq(7,2),fl:'cq'});}
       }
@@ -412,17 +436,18 @@ var Chess=(function(){
   }
   function legal(s){var ps=genPseudo(s,s.turn),out=[];for(var i=0;i<ps.length;i++){var ns=applyMove(s,ps[i]);var ki=findKing(ns.board,s.turn);if(ki>=0&&!atk(ns,ki,ns.turn))out.push(ps[i]);}return out;}
   function inCheck(s,c){var ki=findKing(s.board,c);return ki>=0&&atk(s,ki,opp(c));}
-  function evaluate(s){var score=0;for(var i=0;i<64;i++){var p=s.board[i];if(!p)continue;var t=typ(p),c=col(p),w=c===WHITE;var pi=w?(7-rnk(i))*8+fil(i):rnk(i)*8+fil(i);var v=PV[t]+(PST[t]?PST[t][pi]:0);score+=w?v:-v;}return s.turn===WHITE?score:-score;}
+  // evaluate: positive = WHITE better (absolute perspective)
+  function evaluate(s){var score=0;for(var i=0;i<64;i++){var p=s.board[i];if(!p)continue;var t=typ(p),c=col(p),w=c===WHITE;var pi=w?(7-rnk(i))*8+fil(i):rnk(i)*8+fil(i);var v=PV[t]+(PST[t]?PST[t][pi]:0);score+=w?v:-v;}return score;}
   function mscore(s,m){var b=s.board,a=typ(b[m.from]),v=b[m.to]?typ(b[m.to]):0;return v?10*PV[v]-PV[a]:m.fl==='promo'?900:0;}
   function sortM(s,mv){return mv.slice().sort(function(a,b){return mscore(s,b)-mscore(s,a);});}
-  function minimax(s,d,alpha,beta,max){
+  function minimax(s,d,alpha,beta){
     if(d===0)return evaluate(s);
-    var mv=legal(s);if(!mv.length)return inCheck(s,s.turn)?(max?-99999:99999):0;
+    var mv=legal(s);if(!mv.length)return inCheck(s,s.turn)?(s.turn===WHITE?-99999:99999):0;
     var sm=sortM(s,mv);
-    if(max){var best=-Infinity;for(var i=0;i<sm.length;i++){var v=minimax(applyMove(s,sm[i]),d-1,alpha,beta,false);if(v>best)best=v;if(v>alpha)alpha=v;if(beta<=alpha)break;}return best;}
-    else{var best=Infinity;for(var i=0;i<sm.length;i++){var v=minimax(applyMove(s,sm[i]),d-1,alpha,beta,true);if(v<best)best=v;if(v<beta)beta=v;if(beta<=alpha)break;}return best;}
+    if(s.turn===WHITE){var best=-Infinity;for(var i=0;i<sm.length;i++){var v=minimax(applyMove(s,sm[i]),d-1,alpha,beta);if(v>best)best=v;if(v>alpha)alpha=v;if(beta<=alpha)break;}return best;}
+    else{var best=Infinity;for(var i=0;i<sm.length;i++){var v=minimax(applyMove(s,sm[i]),d-1,alpha,beta);if(v<best)best=v;if(v<beta)beta=v;if(beta<=alpha)break;}return best;}
   }
-  function bestMove(s,d){var mv=legal(s);if(!mv.length)return null;var sm=sortM(s,mv),best=null,bv=-Infinity;for(var i=0;i<sm.length;i++){var v=-minimax(applyMove(s,sm[i]),d-1,-Infinity,Infinity,true);if(v>bv){bv=v;best=sm[i];}}return best;}
+  function bestMove(s,d){var mv=legal(s);if(!mv.length)return null;var sm=sortM(s,mv),best=null,bv=s.turn===WHITE?-Infinity:Infinity;for(var i=0;i<sm.length;i++){var v=minimax(applyMove(s,sm[i]),d-1,-Infinity,Infinity);if(s.turn===WHITE?v>bv:v<bv){bv=v;best=sm[i];}}return best;}
   var FLS='abcdefgh';
   function sqn(i){return FLS[fil(i)]+(rnk(i)+1);}
   function pl(t){return[,'','N','B','R','Q','K'][t];}
@@ -605,42 +630,22 @@ var CG=(function(){
   // Pre-bake textures (run once before init)
   var marbleLight=null,marbleDark=null,woodTex=null;
 
-  // ─── Glass materials ──────────────────────────────────────────────
+  // ─── Solid piece materials ────────────────────────────────────────
   function makeGlassMat(isWhite){
     if(isWhite){
-      // Frosted ice-white glass
-      return new THREE.MeshPhysicalMaterial({
-        color:new THREE.Color(0.82,0.92,1.00),
-        roughness:0.10,
-        metalness:0.0,
-        transmission:0.88,
-        thickness:1.2,
-        ior:1.46,
-        transparent:true,
-        opacity:1.0,
-        envMap:envMap,
-        envMapIntensity:2.8,
-        clearcoat:0.9,
-        clearcoatRoughness:0.08,
+      return new THREE.MeshPhongMaterial({
+        color:0xf0ede0,
+        emissive:0x222222,
+        specular:0xffffff,
+        shininess:120,
         side:THREE.FrontSide,
       });
     }else{
-      // Smoked glossy black glass
-      return new THREE.MeshPhysicalMaterial({
-        color:new THREE.Color(0.018,0.020,0.030),
-        roughness:0.03,
-        metalness:0.0,
-        transmission:0.45,
-        thickness:2.0,
-        ior:1.60,
-        transparent:true,
-        opacity:1.0,
-        envMap:envMap,
-        envMapIntensity:3.5,
-        clearcoat:1.0,
-        clearcoatRoughness:0.02,
-        attenuationColor:new THREE.Color(0.1,0.2,0.4),
-        attenuationDistance:1.5,
+      return new THREE.MeshPhongMaterial({
+        color:0x1a1410,
+        emissive:0x000000,
+        specular:0x886644,
+        shininess:180,
         side:THREE.FrontSide,
       });
     }
@@ -774,34 +779,29 @@ var CG=(function(){
     mouse=new THREE.Vector2();
 
     // ─── Lighting ──────────────────────────────────────────────────
-    // Very low ambient — let physical material reflections do the work
-    scene.add(new THREE.AmbientLight(0x8090c0,0.18));
+    // Ambient — genel aydınlık
+    scene.add(new THREE.AmbientLight(0xfff8f0,0.42));
 
-    // Key light: warm studio overhead (creates soft shadows on board)
-    var key=new THREE.SpotLight(0xfff2e0,3.0,40,Math.PI*0.28,0.35,1.5);
-    key.position.set(3.5,16,5);
+    // Key light: warm studio overhead
+    var key=new THREE.SpotLight(0xfff5e8,2.2,50,Math.PI*0.32,0.30,1.2);
+    key.position.set(3.5,14,6);
     key.target.position.set(3.5,0,3.5);
     key.castShadow=true;
     key.shadow.mapSize.set(2048,2048);
     key.shadow.camera.near=0.5;key.shadow.camera.far=40;
-    key.shadow.radius=4; // soft shadows
+    key.shadow.radius=5;
     key.shadow.bias=-0.0003;
     scene.add(key);scene.add(key.target);
 
-    // Fill light: cool blue from opposite side
-    var fill=new THREE.PointLight(0x6088ff,1.2,30,1.8);
-    fill.position.set(-5,10,-4);
+    // Fill light: karşı taraftan yumuşak
+    var fill=new THREE.DirectionalLight(0xddeeff,0.45);
+    fill.position.set(-6,8,-5);
     scene.add(fill);
 
-    // Rim light: pure white behind board for glass edge glow
-    var rim=new THREE.DirectionalLight(0xffffff,0.5);
-    rim.position.set(-4,6,-10);
-    scene.add(rim);
-
-    // Board accent: warm under-glow for marble reflection
-    var accent=new THREE.PointLight(0xff9040,0.6,12,2.0);
-    accent.position.set(3.5,-2,3.5);
-    scene.add(accent);
+    // Front fill: kameraya yakın yönden
+    var front=new THREE.DirectionalLight(0xfff8ee,0.30);
+    front.position.set(3.5,6,14);
+    scene.add(front);
 
     // Bake textures
     marbleLight=buildMarbleTex(true);
@@ -835,35 +835,20 @@ var CG=(function(){
     boardGrp=new THREE.Group();scene.add(boardGrp);
 
     // Walnut wood base/frame
-    var frameMat=new THREE.MeshPhysicalMaterial({
-      map:woodTex,
-      roughness:0.18,metalness:0.0,
-      envMap:envMap,envMapIntensity:0.8,
-      clearcoat:0.7,clearcoatRoughness:0.06,
-    });
-    var frame=new THREE.Mesh(new THREE.BoxGeometry(9.8,0.38,9.8),frameMat);
-    frame.position.set(3.5,-0.21,3.5);
+    var frameMat=new THREE.MeshPhongMaterial({color:0x5c3310,specular:0x442200,shininess:40});
+    var frame=new THREE.Mesh(new THREE.BoxGeometry(9.6,0.30,9.6),frameMat);
+    frame.position.set(3.5,-0.16,3.5);
     frame.receiveShadow=true;frame.castShadow=false;
     boardGrp.add(frame);
-
-    // Thin border strips around the squares (inlaid look)
-    var borderMat=new THREE.MeshPhysicalMaterial({color:0x1a0c04,roughness:0.12,metalness:0.0,envMap:envMap,envMapIntensity:0.6,clearcoat:0.9,clearcoatRoughness:0.04});
-    var border=new THREE.Mesh(new THREE.BoxGeometry(8.12,0.03,8.12),borderMat);
-    border.position.set(3.5,0.015,3.5);boardGrp.add(border);
-
     squareMeshes=[];
     for(var r=0;r<8;r++){
       for(var f=0;f<8;f++){
         var light=(r+f)%2===0;
-        var geo=new THREE.BoxGeometry(0.995,0.06,0.995);
-        var mat=new THREE.MeshPhysicalMaterial({
-          map:light?marbleLight:marbleDark,
-          roughness:light?0.08:0.05,
-          metalness:0.0,
-          envMap:envMap,
-          envMapIntensity:light?1.2:1.8,
-          clearcoat:1.0,
-          clearcoatRoughness:light?0.06:0.03,
+        var geo=new THREE.BoxGeometry(0.99,0.08,0.99);
+        var mat=new THREE.MeshPhongMaterial({
+          color:light?0xf0e6cc:0x3a2510,
+          specular:light?0xffffff:0x553322,
+          shininess:light?60:90,
         });
         var mesh=new THREE.Mesh(geo,mat);
         var wp=b2w(r,f);
@@ -878,15 +863,11 @@ var CG=(function(){
   // ─── Highlight materials ──────────────────────────────────────────
   function makeSqMat(idx,override){
     var r=Chess.rnk(idx),f=Chess.fil(idx),light=(r+f)%2===0;
-    if(override==='check')   return new THREE.MeshPhysicalMaterial({color:0xff1100,roughness:0.1,metalness:0,envMap:envMap,envMapIntensity:1,clearcoat:1,clearcoatRoughness:0.1,transparent:true,opacity:0.88});
-    if(override==='select')  return new THREE.MeshPhysicalMaterial({color:0x44ff22,roughness:0.1,metalness:0,envMap:envMap,envMapIntensity:1,clearcoat:1,clearcoatRoughness:0.1,transparent:true,opacity:0.80});
-    if(override==='target')  return new THREE.MeshPhysicalMaterial({color:0x1199ff,roughness:0.1,metalness:0,envMap:envMap,envMapIntensity:1,clearcoat:1,clearcoatRoughness:0.1,transparent:true,opacity:0.70});
-    if(override==='lastmove')return new THREE.MeshPhysicalMaterial({color:0xffcc00,roughness:0.1,metalness:0,envMap:envMap,envMapIntensity:1,clearcoat:1,clearcoatRoughness:0.1,transparent:true,opacity:0.50});
-    // Default plain marble
-    return new THREE.MeshPhysicalMaterial({
-      map:light?marbleLight:marbleDark,roughness:light?0.08:0.05,metalness:0,
-      envMap:envMap,envMapIntensity:light?1.2:1.8,clearcoat:1.0,clearcoatRoughness:light?0.06:0.03,
-    });
+    if(override==='check')   return new THREE.MeshPhongMaterial({color:0xdd1100,specular:0xff4444,shininess:80,transparent:true,opacity:0.92});
+    if(override==='select')  return new THREE.MeshPhongMaterial({color:0x33cc11,specular:0x88ff44,shininess:80,transparent:true,opacity:0.85});
+    if(override==='target')  return new THREE.MeshPhongMaterial({color:0x1188ee,specular:0x44aaff,shininess:80,transparent:true,opacity:0.75});
+    if(override==='lastmove')return new THREE.MeshPhongMaterial({color:0xddaa00,specular:0xffdd44,shininess:60,transparent:true,opacity:0.60});
+    return new THREE.MeshPhongMaterial({color:light?0xf0e6cc:0x3a2510,specular:light?0xffffff:0x553322,shininess:light?60:90});
   }
 
   function colorSquares(){
@@ -973,8 +954,23 @@ var CG=(function(){
     colorSquares();updateStatus();
     if(!legalList.length){
       gameOver=true;
-      if(Chess.inCheck(gameState,gameState.turn)){var w=gameState.turn===Chess.WHITE?'Black':'White';flash('☆ Checkmate! '+w+' wins! ☆');document.getElementById('st-status').textContent='Checkmate – '+w+' wins';document.getElementById('sb-msg').textContent='Checkmate!';}
-      else{flash('Stalemate — Draw!');document.getElementById('st-status').textContent='Stalemate – Draw';}
+      if(Chess.inCheck(gameState,gameState.turn)){
+        var loser=gameState.turn===Chess.WHITE?'White':'Black';
+        var winner=gameState.turn===Chess.WHITE?'Black':'White';
+        var youLost=gameState.turn===playerColor;
+        document.getElementById('go-icon').textContent=youLost?'🫪':'🏆';
+        document.getElementById('go-title').textContent=youLost?'Checkmate! You Lost.':'Congratulations!';
+        document.getElementById('go-desc').textContent=youLost?(winner+' wins. Want to try again?'):(loser+' is checkmated. You win!');
+        document.getElementById('st-status').textContent='Checkmate – '+winner+' wins';
+        document.getElementById('sb-msg').textContent='Checkmate!';
+      }else{
+        document.getElementById('go-icon').textContent='🤝';
+        document.getElementById('go-title').textContent='Stalemate — Draw!';
+        document.getElementById('go-desc').textContent='No legal moves available. The game is a draw.';
+        document.getElementById('st-status').textContent='Stalemate – Draw';
+        document.getElementById('sb-msg').textContent='Stalemate!';
+      }
+      document.getElementById('gameover-overlay').classList.add('open');
       return;
     }
     if(gameState.turn!==playerColor)setTimeout(runAI,220);
@@ -1067,6 +1063,7 @@ var CG=(function(){
     document.getElementById('main-menu-screen').style.display='flex';
     document.getElementById('sb-msg').textContent='Ready';
     document.getElementById('promo-dialog').classList.remove('open');
+    document.getElementById('gameover-overlay').classList.remove('open');
   }
 
   function flipBoard(){
@@ -1093,6 +1090,7 @@ document.getElementById('start-game-btn').onclick=function(){
   CG.start(color,+sel.value,d[sel.value]);
 };
 document.getElementById('btn-new-game').onclick=function(){CG.newGame();};
+document.getElementById('go-newgame-btn').onclick=function(){document.getElementById('gameover-overlay').classList.remove('open');CG.newGame();};
 document.getElementById('btn-flip').onclick=function(){CG.flipBoard();};
 document.getElementById('btn-undo').onclick=function(){CG.undo();};
 document.querySelectorAll('.promo-piece').forEach(function(el){
