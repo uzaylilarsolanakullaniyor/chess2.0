@@ -1,0 +1,950 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>3D Chess - Windows XP</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<style>
+/* ── Reset ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { overflow: hidden; width: 100vw; height: 100vh; font-family: 'Tahoma', sans-serif; font-size: 11px; user-select: none; }
+
+/* ── XP Bliss Desktop ── */
+#desktop {
+  width: 100vw; height: 100vh;
+  background: url('https://upload.wikimedia.org/wikipedia/en/0/00/Windowsxp.png') center/cover no-repeat;
+  background-color: #3a6ea5;
+  position: relative;
+}
+
+/* ── Taskbar ── */
+#taskbar {
+  position: absolute; bottom: 0; left: 0; right: 0; height: 30px;
+  background: linear-gradient(to bottom, #245edb 0%, #1c4dbf 8%, #2060df 40%, #1a50cc 50%, #1a50cc 54%, #1e55d4 55%, #2060df 100%);
+  display: flex; align-items: center;
+  border-top: 1px solid #0831a0;
+  box-shadow: 0 -1px 0 #4a80f0 inset;
+  z-index: 9999;
+}
+
+/* ── Start Button ── */
+#start-btn {
+  height: 30px; min-width: 95px;
+  background: linear-gradient(to bottom, #3dbb3d 0%, #29a429 8%, #3fc93f 40%, #34c034 50%, #2db82d 55%, #38c638 100%);
+  border: 1px solid #1a7a1a;
+  border-radius: 0 12px 12px 0;
+  color: white; font-weight: bold; font-size: 13px;
+  display: flex; align-items: center; gap: 4px;
+  padding: 0 12px 0 6px; cursor: pointer;
+  box-shadow: 1px 0 3px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.3);
+  position: relative; margin-right: 4px;
+}
+#start-btn:hover { filter: brightness(1.1); }
+#start-btn:active { filter: brightness(0.9); }
+#start-btn .xp-logo { width: 20px; height: 20px; display: flex; flex-wrap: wrap; gap: 1px; }
+#start-btn .xp-logo span { width: 9px; height: 9px; border-radius: 1px; }
+#start-btn .xp-logo span:nth-child(1) { background: #f25022; }
+#start-btn .xp-logo span:nth-child(2) { background: #7fba00; }
+#start-btn .xp-logo span:nth-child(3) { background: #00a4ef; }
+#start-btn .xp-logo span:nth-child(4) { background: #ffb900; }
+
+/* ── Taskbar Divider ── */
+.taskbar-divider {
+  width: 2px; height: 22px; margin: 0 3px;
+  background: linear-gradient(to right, #1040b0, #4070e0);
+  border-right: 1px solid #1040b0;
+}
+
+/* ── Taskbar Window Button ── */
+.taskbar-btn {
+  height: 22px; min-width: 140px; max-width: 160px;
+  background: linear-gradient(to bottom, #3166d4 0%, #2458c8 40%, #1a4abf 50%, #2055cc 100%);
+  border: 1px solid #0a30a0; border-radius: 3px;
+  color: white; font-size: 11px;
+  display: flex; align-items: center; gap: 4px;
+  padding: 0 8px; cursor: pointer;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.2);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.taskbar-btn.active {
+  background: linear-gradient(to bottom, #1a4abf 0%, #2458c8 40%, #3166d4 100%);
+  border-color: #0820a0;
+  box-shadow: inset 1px 1px 3px rgba(0,0,0,.3);
+}
+.taskbar-btn:hover { filter: brightness(1.1); }
+.taskbar-btn .tb-icon { font-size: 14px; }
+
+/* ── System Tray ── */
+#systray {
+  margin-left: auto; height: 100%;
+  background: linear-gradient(to bottom, #1a52c8 0%, #1548b8 8%, #1c56cc 40%, #1450c0 50%, #1248b4 55%, #1652c4 100%);
+  border-left: 1px solid #0a30a0;
+  display: flex; align-items: center; padding: 0 8px; gap: 6px;
+  color: white; font-size: 11px;
+  box-shadow: -1px 0 0 #3060d8 inset;
+}
+#clock { font-size: 11px; color: white; text-align: center; line-height: 1.3; }
+
+/* ── Start Menu ── */
+#start-menu {
+  position: absolute; bottom: 30px; left: 0;
+  width: 380px;
+  background: white;
+  border: 2px solid #0831a0;
+  border-radius: 8px 8px 0 0;
+  box-shadow: 2px 0 8px rgba(0,0,0,.5);
+  display: none; z-index: 10000; overflow: hidden;
+}
+#start-menu.open { display: block; }
+.sm-header {
+  background: linear-gradient(to right, #1c59d4, #3d95ff);
+  padding: 10px 12px; display: flex; align-items: center; gap: 10px;
+  color: white;
+}
+.sm-avatar { width: 40px; height: 40px; border-radius: 4px; background: #7ec8e3; display: flex; align-items: center; justify-content: center; font-size: 22px; border: 2px solid white; }
+.sm-username { font-size: 13px; font-weight: bold; }
+.sm-body { display: flex; }
+.sm-left { flex: 1; padding: 6px 0; border-right: 1px solid #ccc; }
+.sm-right { width: 160px; padding: 6px 0; background: #f0e8d8; }
+.sm-item { display: flex; align-items: center; gap: 8px; padding: 5px 12px; cursor: pointer; font-size: 11px; }
+.sm-item:hover { background: #316ac5; color: white; }
+.sm-item .sm-icon { font-size: 20px; width: 24px; text-align: center; }
+.sm-sep { height: 1px; background: #ccc; margin: 4px 0; }
+.sm-footer { background: linear-gradient(to right, #1c59d4, #3d95ff); display: flex; justify-content: flex-end; gap: 4px; padding: 4px 8px; }
+.sm-footer-btn { display: flex; align-items: center; gap: 4px; padding: 3px 8px; color: white; font-size: 11px; cursor: pointer; border-radius: 3px; }
+.sm-footer-btn:hover { background: rgba(255,255,255,.2); }
+
+/* ── XP Window ── */
+#chess-window {
+  position: absolute;
+  top: 30px; left: 80px;
+  width: 900px; height: 640px;
+  min-width: 600px; min-height: 400px;
+  background: #ece9d8;
+  border: 2px solid #0831a0;
+  border-radius: 8px 8px 0 0;
+  box-shadow: 2px 2px 10px rgba(0,0,0,.5);
+  display: flex; flex-direction: column;
+  z-index: 1000;
+  overflow: hidden;
+}
+
+/* ── Title Bar ── */
+#title-bar {
+  height: 28px; min-height: 28px;
+  background: linear-gradient(to bottom, #4a9cf7 0%, #1168e3 8%, #1f74f0 40%, #1060e0 50%, #0c58d8 55%, #1468e8 100%);
+  display: flex; align-items: center; padding: 0 6px;
+  cursor: default; border-radius: 6px 6px 0 0;
+}
+#title-bar-icon { font-size: 16px; margin-right: 4px; }
+#title-bar-text { color: white; font-size: 12px; font-weight: bold; text-shadow: 1px 1px 2px rgba(0,0,0,.5); flex: 1; pointer-events: none; }
+.win-btn {
+  width: 21px; height: 21px; border-radius: 3px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: bold; cursor: pointer;
+  margin-left: 2px; border: 1px solid;
+  background: linear-gradient(to bottom, #f9f9f9, #d4d0c8);
+  border-color: #888 #444 #444 #888;
+}
+.win-btn:hover { filter: brightness(1.1); }
+.win-btn:active { filter: brightness(0.9); }
+.win-btn.close-btn { background: linear-gradient(to bottom, #ff8080, #cc0000); color: white; border-color: #aa0000 #660000 #660000 #aa0000; }
+.win-btn.close-btn:hover { background: linear-gradient(to bottom, #ff9999, #dd1111); }
+
+/* ── Menu Bar ── */
+#menu-bar {
+  background: #ece9d8; border-bottom: 1px solid #aca899;
+  padding: 2px 4px; display: flex; gap: 0;
+}
+.menu-item { padding: 2px 8px; cursor: pointer; font-size: 11px; border-radius: 2px; }
+.menu-item:hover { background: #316ac5; color: white; }
+
+/* ── Window Content ── */
+#window-content { flex: 1; display: flex; overflow: hidden; position: relative; }
+
+/* ── Main Menu Screen ── */
+#main-menu-screen {
+  width: 100%; height: 100%;
+  display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(135deg, #1a3a6e 0%, #2060c0 50%, #1a3a6e 100%);
+}
+.menu-box {
+  background: #ece9d8;
+  border: 2px solid #7f9db9;
+  border-radius: 4px;
+  padding: 20px 28px;
+  width: 320px;
+  box-shadow: inset 1px 1px 0 white, 2px 2px 8px rgba(0,0,0,.4);
+}
+.menu-box h2 { text-align: center; font-size: 16px; color: #003399; margin-bottom: 16px; border-bottom: 1px solid #7f9db9; padding-bottom: 8px; }
+.menu-section { margin-bottom: 14px; }
+.menu-section label { font-size: 11px; font-weight: bold; color: #333; display: block; margin-bottom: 6px; }
+.xp-radio-group { display: flex; gap: 16px; }
+.xp-radio { display: flex; align-items: center; gap: 4px; cursor: pointer; }
+.xp-radio input[type=radio] { cursor: pointer; }
+.xp-select {
+  width: 100%; height: 22px;
+  background: white; border: 1px solid #7f9db9;
+  font-family: 'Tahoma', sans-serif; font-size: 11px;
+  padding: 0 4px; outline: none;
+}
+.xp-select:focus { border-color: #316ac5; }
+.xp-btn {
+  height: 23px; padding: 0 16px;
+  background: linear-gradient(to bottom, #f0ede0 0%, #dbd5c5 50%, #ccc8b8 51%, #e0ddd0 100%);
+  border: 1px solid; border-color: #888 #666 #666 #888;
+  font-family: 'Tahoma', sans-serif; font-size: 11px;
+  cursor: pointer; border-radius: 3px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.8);
+}
+.xp-btn:hover { background: linear-gradient(to bottom, #f4f1e4 0%, #e0daca 50%, #d4d0c0 51%, #e8e5d8 100%); }
+.xp-btn:active { background: linear-gradient(to bottom, #ccc8b8 0%, #dbd5c5 100%); box-shadow: inset 1px 1px 2px rgba(0,0,0,.2); }
+.xp-btn.primary {
+  background: linear-gradient(to bottom, #f0ede0, #e0ddd0);
+  border-color: #316ac5 #1a4a9a #1a4a9a #316ac5;
+  font-weight: bold;
+  box-shadow: 0 0 0 2px #316ac5, inset 0 1px 0 rgba(255,255,255,.8);
+}
+.menu-btn-row { display: flex; justify-content: center; margin-top: 18px; }
+
+/* ── Game Screen ── */
+#game-screen { display: none; width: 100%; height: 100%; flex-direction: row; }
+#game-screen.active { display: flex; }
+
+/* ── 3D Viewport ── */
+#three-canvas-container {
+  flex: 1; position: relative; background: #1a1a2e; overflow: hidden;
+}
+#three-canvas-container canvas { display: block; }
+
+/* ── Side Panel ── */
+#side-panel {
+  width: 180px; min-width: 180px;
+  background: #ece9d8;
+  border-left: 1px solid #aca899;
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
+.panel-section {
+  border-bottom: 1px solid #aca899;
+  padding: 8px;
+}
+.panel-section h3 {
+  font-size: 11px; font-weight: bold; color: #003399;
+  background: linear-gradient(to right, #dce6f5, #ece9d8);
+  margin: -8px -8px 6px -8px; padding: 3px 8px;
+  border-bottom: 1px solid #b8c8e0;
+}
+.status-text { font-size: 11px; color: #333; line-height: 1.6; }
+.status-text span { font-weight: bold; }
+#move-list {
+  flex: 1; overflow-y: auto; padding: 4px 8px;
+  font-size: 10px; font-family: monospace; color: #333;
+  line-height: 1.8;
+}
+#move-list::-webkit-scrollbar { width: 8px; }
+#move-list::-webkit-scrollbar-track { background: #f0ede0; }
+#move-list::-webkit-scrollbar-thumb { background: #9090a0; border-radius: 2px; }
+.move-pair { display: flex; gap: 6px; }
+.move-num { color: #888; min-width: 20px; }
+.move-w { color: #333; min-width: 46px; }
+.move-b { color: #333; }
+.panel-btn-row { padding: 6px 8px; display: flex; flex-direction: column; gap: 4px; }
+.panel-btn-row .xp-btn { width: 100%; font-size: 11px; }
+
+/* ── Status Bar ── */
+#status-bar {
+  height: 20px; background: #ece9d8;
+  border-top: 1px solid #aca899;
+  display: flex; align-items: center;
+  padding: 0 6px; font-size: 11px; color: #333;
+  gap: 12px;
+}
+.status-panel { padding: 0 8px; border: 1px solid; border-color: #888 #ccc #ccc #888; height: 16px; display: flex; align-items: center; }
+
+/* ── Promotion Dialog ── */
+#promo-dialog {
+  display: none; position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,.5); z-index: 2000;
+  align-items: center; justify-content: center;
+}
+#promo-dialog.open { display: flex; }
+.promo-box {
+  background: #ece9d8; border: 2px solid #0831a0;
+  border-radius: 4px; padding: 16px; text-align: center;
+  box-shadow: 2px 2px 10px rgba(0,0,0,.5);
+}
+.promo-box h3 { color: #003399; margin-bottom: 12px; }
+.promo-pieces { display: flex; gap: 8px; justify-content: center; }
+.promo-piece {
+  width: 50px; height: 50px; border: 2px solid #7f9db9;
+  border-radius: 4px; cursor: pointer; font-size: 28px;
+  display: flex; align-items: center; justify-content: center;
+  background: white;
+}
+.promo-piece:hover { background: #dce6f5; border-color: #316ac5; }
+
+/* ── Checkmate / Check Overlay ── */
+#game-msg {
+  display: none; position: absolute; top: 8px; left: 50%; transform: translateX(-50%);
+  background: rgba(20,20,20,.85); color: #ffdd44; font-size: 14px; font-weight: bold;
+  padding: 6px 18px; border-radius: 4px; z-index: 1500; pointer-events: none;
+  border: 1px solid #ffdd44; text-shadow: 0 0 8px #ffaa00;
+}
+#game-msg.visible { display: block; }
+
+/* ── Loading ── */
+#loading-screen {
+  position: absolute; inset: 0; background: #1a1a2e;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  color: white; font-size: 14px; z-index: 3000;
+}
+.load-bar-bg { width: 200px; height: 16px; background: #333; border-radius: 8px; overflow: hidden; margin-top: 12px; border: 1px solid #555; }
+.load-bar { height: 100%; width: 0%; background: linear-gradient(to right, #2060df, #40a0ff); border-radius: 8px; transition: width .1s; }
+
+/* ── AI Thinking indicator ── */
+#ai-thinking {
+  display: none; position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%);
+  background: rgba(0,50,150,.85); color: #aaddff; font-size: 11px;
+  padding: 4px 14px; border-radius: 3px; z-index: 1500;
+  border: 1px solid #4488cc;
+}
+#ai-thinking.visible { display: block; }
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════ DESKTOP ══════════════════════════════════ -->
+<div id="desktop">
+
+  <!-- START MENU -->
+  <div id="start-menu">
+    <div class="sm-header">
+      <div class="sm-avatar">👤</div>
+      <div class="sm-username">User</div>
+    </div>
+    <div class="sm-body">
+      <div class="sm-left">
+        <div class="sm-item"><span class="sm-icon">♟️</span> 3D Chess</div>
+        <div class="sm-item"><span class="sm-icon">🌐</span> Internet Explorer</div>
+        <div class="sm-item"><span class="sm-icon">📧</span> Outlook Express</div>
+        <div class="sm-sep"></div>
+        <div class="sm-item"><span class="sm-icon">📁</span> My Documents</div>
+        <div class="sm-item"><span class="sm-icon">🖼️</span> My Pictures</div>
+        <div class="sm-item"><span class="sm-icon">🎵</span> My Music</div>
+        <div class="sm-item"><span class="sm-icon">💻</span> My Computer</div>
+        <div class="sm-sep"></div>
+        <div class="sm-item"><span class="sm-icon">⚙️</span> Control Panel</div>
+        <div class="sm-item"><span class="sm-icon">🔍</span> Search</div>
+        <div class="sm-item"><span class="sm-icon">❓</span> Help and Support</div>
+      </div>
+      <div class="sm-right">
+        <div class="sm-item"><span class="sm-icon">🖥️</span> My Computer</div>
+        <div class="sm-item"><span class="sm-icon">📁</span> My Documents</div>
+        <div class="sm-item"><span class="sm-icon">🌐</span> Network</div>
+        <div class="sm-sep"></div>
+        <div class="sm-item"><span class="sm-icon">⚙️</span> Settings</div>
+        <div class="sm-item"><span class="sm-icon">🖨️</span> Printers</div>
+      </div>
+    </div>
+    <div class="sm-footer">
+      <div class="sm-footer-btn">🔒 Log Off</div>
+      <div class="sm-footer-btn">⏻ Turn Off</div>
+    </div>
+  </div>
+
+  <!-- ══════════════ XP WINDOW ══════════════ -->
+  <div id="chess-window">
+
+    <!-- TITLE BAR -->
+    <div id="title-bar" id="title-bar">
+      <span id="title-bar-icon">♟️</span>
+      <span id="title-bar-text">3D Chess</span>
+      <div class="win-btn" id="btn-min" title="Minimize">_</div>
+      <div class="win-btn" id="btn-max" title="Maximize">□</div>
+      <div class="win-btn close-btn" id="btn-close" title="Close">✕</div>
+    </div>
+
+    <!-- MENU BAR -->
+    <div id="menu-bar">
+      <div class="menu-item">Game</div>
+      <div class="menu-item">View</div>
+      <div class="menu-item">Options</div>
+      <div class="menu-item">Help</div>
+    </div>
+
+    <!-- WINDOW CONTENT -->
+    <div id="window-content">
+
+      <!-- MAIN MENU SCREEN -->
+      <div id="main-menu-screen">
+        <div class="menu-box">
+          <h2>♟ 3D Chess — New Game</h2>
+
+          <div class="menu-section">
+            <label>Play as:</label>
+            <div class="xp-radio-group">
+              <label class="xp-radio"><input type="radio" name="color" value="white" checked> ⬜ White</label>
+              <label class="xp-radio"><input type="radio" name="color" value="black"> ⬛ Black</label>
+            </div>
+          </div>
+
+          <div class="menu-section">
+            <label>Difficulty:</label>
+            <select class="xp-select" id="difficulty-select">
+              <option value="1">Easy</option>
+              <option value="2" selected>Medium</option>
+              <option value="3">Hard</option>
+              <option value="5">Unbeatable</option>
+            </select>
+          </div>
+
+          <div class="menu-btn-row">
+            <button class="xp-btn primary" id="start-game-btn">▶ Start Game</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- GAME SCREEN -->
+      <div id="game-screen">
+        <!-- 3D viewport -->
+        <div id="three-canvas-container">
+          <div id="loading-screen">
+            <div>Initializing 3D Engine…</div>
+            <div class="load-bar-bg"><div class="load-bar" id="load-bar"></div></div>
+          </div>
+          <div id="game-msg"></div>
+          <div id="ai-thinking">AI is thinking…</div>
+          <!-- Promotion dialog -->
+          <div id="promo-dialog">
+            <div class="promo-box">
+              <h3>Promote Pawn</h3>
+              <div class="promo-pieces">
+                <div class="promo-piece" data-piece="q">♛</div>
+                <div class="promo-piece" data-piece="r">♜</div>
+                <div class="promo-piece" data-piece="b">♝</div>
+                <div class="promo-piece" data-piece="n">♞</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Side Panel -->
+        <div id="side-panel">
+          <div class="panel-section">
+            <h3>Game Status</h3>
+            <div class="status-text">
+              Turn: <span id="st-turn">White</span><br>
+              You: <span id="st-player">White</span><br>
+              Difficulty: <span id="st-diff">Medium</span><br>
+              Status: <span id="st-status">Playing</span>
+            </div>
+          </div>
+          <div class="panel-section" style="flex:1;display:flex;flex-direction:column;overflow:hidden;">
+            <h3>Move History</h3>
+            <div id="move-list"></div>
+          </div>
+          <div class="panel-btn-row">
+            <button class="xp-btn" id="btn-new-game">New Game</button>
+            <button class="xp-btn" id="btn-flip">Flip Board</button>
+            <button class="xp-btn" id="btn-undo">Undo Move</button>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /window-content -->
+
+    <!-- STATUS BAR -->
+    <div id="status-bar">
+      <div class="status-panel" id="sb-msg">Ready</div>
+      <div class="status-panel" id="sb-coords"></div>
+    </div>
+
+  </div><!-- /chess-window -->
+
+  <!-- ══════════════ TASKBAR ══════════════ -->
+  <div id="taskbar">
+    <div id="start-btn">
+      <div class="xp-logo">
+        <span></span><span></span><span></span><span></span>
+      </div>
+      <span>start</span>
+    </div>
+    <div class="taskbar-divider"></div>
+    <div class="taskbar-btn active" id="tb-chess-btn">
+      <span class="tb-icon">♟️</span> 3D Chess
+    </div>
+    <div id="systray">
+      <span>🔊</span>
+      <span>🌐</span>
+      <div id="clock"></div>
+    </div>
+  </div>
+
+</div><!-- /desktop -->
+
+<script>
+const Chess = (function() {
+  const EMPTY=0,P=1,N=2,B=3,R=4,Q=5,K=6;
+  const WHITE=8, BLACK=16;
+  const WP=WHITE|P, WN=WHITE|N, WB=WHITE|B, WR=WHITE|R, WQ=WHITE|Q, WK=WHITE|K;
+  const BP=BLACK|P, BN=BLACK|N, BB=BLACK|B, BR=BLACK|R, BQ=BLACK|Q, BK=BLACK|K;
+  const PIECE_VALUES = {[P]:100,[N]:320,[B]:330,[R]:500,[Q]:900,[K]:20000};
+  const PST = {
+    [P]: [0,0,0,0,0,0,0,0,50,50,50,50,50,50,50,50,10,10,20,30,30,20,10,10,5,5,10,25,25,10,5,5,0,0,0,20,20,0,0,0,5,-5,-10,0,0,-10,-5,5,5,10,10,-20,-20,10,10,5,0,0,0,0,0,0,0,0],
+    [N]: [-50,-40,-30,-30,-30,-30,-40,-50,-40,-20,0,0,0,0,-20,-40,-30,0,10,15,15,10,0,-30,-30,5,15,20,20,15,5,-30,-30,0,15,20,20,15,0,-30,-30,5,10,15,15,10,5,-30,-40,-20,0,5,5,0,-20,-40,-50,-40,-30,-30,-30,-30,-40,-50],
+    [B]: [-20,-10,-10,-10,-10,-10,-10,-20,-10,0,0,0,0,0,0,-10,-10,0,5,10,10,5,0,-10,-10,5,5,10,10,5,5,-10,-10,0,10,10,10,10,0,-10,-10,10,10,10,10,10,10,-10,-10,5,0,0,0,0,5,-10,-20,-10,-10,-10,-10,-10,-10,-20],
+    [R]: [0,0,0,0,0,0,0,0,5,10,10,10,10,10,10,5,-5,0,0,0,0,0,0,-5,-5,0,0,0,0,0,0,-5,-5,0,0,0,0,0,0,-5,-5,0,0,0,0,0,0,-5,-5,0,0,0,0,0,0,-5,0,0,0,5,5,0,0,0],
+    [Q]: [-20,-10,-10,-5,-5,-10,-10,-20,-10,0,0,0,0,0,0,-10,-10,0,5,5,5,5,0,-10,-5,0,5,5,5,5,0,-5,0,0,5,5,5,5,0,-5,-10,5,5,5,5,5,0,-10,-10,0,5,0,0,0,0,-10,-20,-10,-10,-5,-5,-10,-10,-20],
+    [K]: [-30,-40,-40,-50,-50,-40,-40,-30,-30,-40,-40,-50,-50,-40,-40,-30,-30,-40,-40,-50,-50,-40,-40,-30,-30,-40,-40,-50,-50,-40,-40,-30,-20,-30,-30,-40,-40,-30,-30,-20,-10,-20,-20,-20,-20,-20,-20,-10,20,20,0,0,0,0,20,20,20,30,10,0,0,10,30,20]
+  };
+  function makeBoard() {
+    const b = new Array(64).fill(EMPTY);
+    const back = [WR,WN,WB,WQ,WK,WB,WN,WR];
+    for (let f=0;f<8;f++) { b[f]=back[f]; b[8+f]=WP; }
+    const bback = [BR,BN,BB,BQ,BK,BB,BN,BR];
+    for (let f=0;f<8;f++) { b[56+f]=bback[f]; b[48+f]=BP; }
+    return b;
+  }
+  function color(p) { return p & (WHITE|BLACK); }
+  function type(p)  { return p & 7; }
+  function isWhite(p) { return (p & WHITE) !== 0; }
+  function isBlack(p) { return (p & BLACK) !== 0; }
+  function opponent(c) { return c === WHITE ? BLACK : WHITE; }
+  function newState() {
+    return { board: makeBoard(), turn: WHITE, castling: { WK:true,WQ:true,BK:true,BQ:true }, enPassant: -1, halfMove: 0, fullMove: 1, history: [] };
+  }
+  function sq(r, f) { return r * 8 + f; }
+  function rank(idx) { return Math.floor(idx / 8); }
+  function file(idx) { return idx % 8; }
+  function inBounds(r, f) { return r >= 0 && r < 8 && f >= 0 && f < 8; }
+  function genMoves(state, forColor) {
+    const { board, castling, enPassant } = state;
+    const moves = [];
+    const c = forColor, opp = opponent(c);
+    const dir = c === WHITE ? 1 : -1;
+    for (let idx = 0; idx < 64; idx++) {
+      const p = board[idx];
+      if (!p || color(p) !== c) continue;
+      const t = type(p), r = rank(idx), f = file(idx);
+      if (t === P) {
+        const nr = r + dir;
+        if (inBounds(nr, f) && board[sq(nr, f)] === EMPTY) {
+          addPawnMove(moves, idx, sq(nr, f), c);
+          const startR = c === WHITE ? 1 : 6;
+          if (r === startR && board[sq(nr+dir, f)] === EMPTY) moves.push({ from: idx, to: sq(nr+dir,f), flags: 'dp' });
+        }
+        for (const df of [-1, 1]) {
+          const nf = f + df;
+          if (!inBounds(nr, nf)) continue;
+          const dest = sq(nr, nf);
+          if (board[dest] && color(board[dest]) === opp) addPawnMove(moves, idx, dest, c);
+          else if (dest === enPassant) moves.push({ from: idx, to: dest, flags: 'ep' });
+        }
+      } else if (t === N) {
+        for (const [dr,df] of [[-2,-1],[-2,1],[-1,-2],[-1,2],[1,-2],[1,2],[2,-1],[2,1]]) {
+          const nr=r+dr, nf=f+df;
+          if (!inBounds(nr,nf)) continue;
+          const dest=sq(nr,nf);
+          if (!board[dest] || color(board[dest])===opp) moves.push({ from: idx, to: dest, flags: '' });
+        }
+      } else if (t === B || t === Q) {
+        for (const [dr,df] of [[-1,-1],[-1,1],[1,-1],[1,1]]) {
+          for (let d=1; d<8; d++) {
+            const nr=r+dr*d, nf=f+df*d;
+            if (!inBounds(nr,nf)) break;
+            const dest=sq(nr,nf);
+            if (!board[dest]) { moves.push({from:idx,to:dest,flags:''}); continue; }
+            if (color(board[dest])===opp) moves.push({from:idx,to:dest,flags:''});
+            break;
+          }
+        }
+      }
+      if (t === R || t === Q) {
+        for (const [dr,df] of [[-1,0],[1,0],[0,-1],[0,1]]) {
+          for (let d=1; d<8; d++) {
+            const nr=r+dr*d, nf=f+df*d;
+            if (!inBounds(nr,nf)) break;
+            const dest=sq(nr,nf);
+            if (!board[dest]) { moves.push({from:idx,to:dest,flags:''}); continue; }
+            if (color(board[dest])===opp) moves.push({from:idx,to:dest,flags:''});
+            break;
+          }
+        }
+      }
+      if (t === K) {
+        for (const [dr,df] of [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]]) {
+          const nr=r+dr, nf=f+df;
+          if (!inBounds(nr,nf)) continue;
+          const dest=sq(nr,nf);
+          if (!board[dest] || color(board[dest])===opp) moves.push({from:idx,to:dest,flags:''});
+        }
+        if (c === WHITE && r === 0) {
+          if (castling.WK && !board[sq(0,5)] && !board[sq(0,6)] && !isAttacked(state,sq(0,4),opp) && !isAttacked(state,sq(0,5),opp) && !isAttacked(state,sq(0,6),opp)) moves.push({from:idx,to:sq(0,6),flags:'ck'});
+          if (castling.WQ && !board[sq(0,3)] && !board[sq(0,2)] && !board[sq(0,1)] && !isAttacked(state,sq(0,4),opp) && !isAttacked(state,sq(0,3),opp) && !isAttacked(state,sq(0,2),opp)) moves.push({from:idx,to:sq(0,2),flags:'cq'});
+        } else if (c === BLACK && r === 7) {
+          if (castling.BK && !board[sq(7,5)] && !board[sq(7,6)] && !isAttacked(state,sq(7,4),opp) && !isAttacked(state,sq(7,5),opp) && !isAttacked(state,sq(7,6),opp)) moves.push({from:idx,to:sq(7,6),flags:'ck'});
+          if (castling.BQ && !board[sq(7,3)] && !board[sq(7,2)] && !board[sq(7,1)] && !isAttacked(state,sq(7,4),opp) && !isAttacked(state,sq(7,3),opp) && !isAttacked(state,sq(7,2),opp)) moves.push({from:idx,to:sq(7,2),flags:'cq'});
+        }
+      }
+    }
+    return moves;
+  }
+  function addPawnMove(moves, from, to, c) {
+    const promRank = c === WHITE ? 7 : 0;
+    if (rank(to) === promRank) { for (const pt of [Q,R,B,N]) moves.push({ from, to, flags: 'promo', promo: pt }); }
+    else moves.push({ from, to, flags: '' });
+  }
+  function isAttacked(state, idx, byColor) {
+    const { board } = state;
+    const r = rank(idx), f = file(idx);
+    const pd = byColor === WHITE ? -1 : 1;
+    for (const df of [-1, 1]) {
+      const nr = r + pd, nf = f + df;
+      if (inBounds(nr, nf)) { const p = board[sq(nr, nf)]; if (p && type(p) === P && color(p) === byColor) return true; }
+    }
+    for (const [dr,df] of [[-2,-1],[-2,1],[-1,-2],[-1,2],[1,-2],[1,2],[2,-1],[2,1]]) {
+      const nr=r+dr, nf=f+df;
+      if (inBounds(nr,nf)) { const p=board[sq(nr,nf)]; if(p&&type(p)===N&&color(p)===byColor) return true; }
+    }
+    for (const [dr,df] of [[-1,-1],[-1,1],[1,-1],[1,1]]) {
+      for (let d=1;d<8;d++) {
+        const nr=r+dr*d, nf=f+df*d;
+        if (!inBounds(nr,nf)) break;
+        const p=board[sq(nr,nf)];
+        if (!p) continue;
+        if (color(p)===byColor && (type(p)===B||type(p)===Q)) return true;
+        break;
+      }
+    }
+    for (const [dr,df] of [[-1,0],[1,0],[0,-1],[0,1]]) {
+      for (let d=1;d<8;d++) {
+        const nr=r+dr*d, nf=f+df*d;
+        if (!inBounds(nr,nf)) break;
+        const p=board[sq(nr,nf)];
+        if (!p) continue;
+        if (color(p)===byColor && (type(p)===R||type(p)===Q)) return true;
+        break;
+      }
+    }
+    for (const [dr,df] of [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]]) {
+      const nr=r+dr, nf=f+df;
+      if (inBounds(nr,nf)) { const p=board[sq(nr,nf)]; if(p&&type(p)===K&&color(p)===byColor) return true; }
+    }
+    return false;
+  }
+  function findKing(board, c) {
+    for (let i=0;i<64;i++) if (board[i] && type(board[i])===K && color(board[i])===c) return i;
+    return -1;
+  }
+  function applyMove(state, move, promoPiece) {
+    const b = state.board.slice();
+    const piece = b[move.from], captured = b[move.to];
+    let epTarget = -1;
+    b[move.to] = piece; b[move.from] = EMPTY;
+    if (move.flags === 'ep') { const capR=rank(move.from),capF=file(move.to); b[sq(capR,capF)]=EMPTY; }
+    if (move.flags === 'dp') epTarget = sq((rank(move.from)+rank(move.to))>>1, file(move.from));
+    if (move.flags === 'promo') b[move.to] = color(piece)|(promoPiece||move.promo||Q);
+    if (move.flags === 'ck') { if(color(piece)===WHITE){b[sq(0,5)]=WR;b[sq(0,7)]=EMPTY;}else{b[sq(7,5)]=BR;b[sq(7,7)]=EMPTY;} }
+    if (move.flags === 'cq') { if(color(piece)===WHITE){b[sq(0,3)]=WR;b[sq(0,0)]=EMPTY;}else{b[sq(7,3)]=BR;b[sq(7,0)]=EMPTY;} }
+    const newCastling = {...state.castling};
+    if (type(piece)===K) { if(color(piece)===WHITE){newCastling.WK=false;newCastling.WQ=false;}else{newCastling.BK=false;newCastling.BQ=false;} }
+    if (move.from===sq(0,0)||move.to===sq(0,0)) newCastling.WQ=false;
+    if (move.from===sq(0,7)||move.to===sq(0,7)) newCastling.WK=false;
+    if (move.from===sq(7,0)||move.to===sq(7,0)) newCastling.BQ=false;
+    if (move.from===sq(7,7)||move.to===sq(7,7)) newCastling.BK=false;
+    const newHM = (type(piece)===P||captured) ? 0 : state.halfMove+1;
+    const opp = opponent(state.turn);
+    return { newState: { board:b, turn:opp, castling:newCastling, enPassant:epTarget, halfMove:newHM, fullMove:state.fullMove+(state.turn===BLACK?1:0), history:state.history }, captured };
+  }
+  function getLegalMoves(state) {
+    const pseudo = genMoves(state, state.turn), legal = [];
+    for (const m of pseudo) {
+      const { newState: ns } = applyMove(state, m);
+      const kingIdx = findKing(ns.board, state.turn);
+      if (kingIdx < 0) continue;
+      if (!isAttacked(ns, kingIdx, ns.turn)) legal.push(m);
+    }
+    return legal;
+  }
+  function isInCheck(state, c) {
+    const kingIdx = findKing(state.board, c);
+    if (kingIdx < 0) return false;
+    return isAttacked(state, kingIdx, opponent(c));
+  }
+  function evaluate(state) {
+    let score = 0;
+    for (let i=0;i<64;i++) {
+      const p = state.board[i]; if (!p) continue;
+      const t=type(p), c=color(p), isW=c===WHITE;
+      const pstIdx = isW?(7-rank(i))*8+file(i):rank(i)*8+file(i);
+      const val = PIECE_VALUES[t]+(PST[t]?PST[t][pstIdx]:0);
+      score += isW ? val : -val;
+    }
+    return state.turn === WHITE ? score : -score;
+  }
+  function moveScore(state, m) {
+    const b=state.board, attacker=type(b[m.from]), victim=b[m.to]?type(b[m.to]):0;
+    if (victim) return 10*PIECE_VALUES[victim]-PIECE_VALUES[attacker];
+    if (m.flags==='promo') return 900;
+    return 0;
+  }
+  function sortMoves(state, moves) { return moves.slice().sort((a,b)=>moveScore(state,b)-moveScore(state,a)); }
+  function minimax(state, depth, alpha, beta, maximizing) {
+    if (depth===0) return evaluate(state);
+    const moves = getLegalMoves(state);
+    if (!moves.length) return isInCheck(state,state.turn)?(maximizing?-99999:99999):0;
+    const sorted = sortMoves(state, moves);
+    if (maximizing) {
+      let best=-Infinity;
+      for (const m of sorted) { const {newState:ns}=applyMove(state,m); const val=minimax(ns,depth-1,alpha,beta,false); if(val>best)best=val; if(val>alpha)alpha=val; if(beta<=alpha)break; }
+      return best;
+    } else {
+      let best=Infinity;
+      for (const m of sorted) { const {newState:ns}=applyMove(state,m); const val=minimax(ns,depth-1,alpha,beta,true); if(val<best)best=val; if(val<beta)beta=val; if(beta<=alpha)break; }
+      return best;
+    }
+  }
+  function getBestMove(state, depth) {
+    const moves=getLegalMoves(state); if(!moves.length) return null;
+    const sorted=sortMoves(state,moves); let best=null,bestVal=-Infinity;
+    for (const m of sorted) { const {newState:ns}=applyMove(state,m); const val=-minimax(ns,depth-1,-Infinity,Infinity,true); if(val>bestVal){bestVal=val;best=m;} }
+    return best;
+  }
+  const FILES='abcdefgh';
+  function sqName(idx) { return FILES[file(idx)]+(rank(idx)+1); }
+  function pieceLetter(t) { return [,'','N','B','R','Q','K'][t]; }
+  function moveNotation(state, move) {
+    const b=state.board, p=b[move.from], t=type(p);
+    if (move.flags==='ck') return 'O-O';
+    if (move.flags==='cq') return 'O-O-O';
+    let str='';
+    if (t!==P) str+=pieceLetter(t);
+    if (b[move.to]||move.flags==='ep') { if(t===P)str+=FILES[file(move.from)]; str+='x'; }
+    str+=sqName(move.to);
+    if (move.flags==='promo') str+='='+pieceLetter(move.promo||Q);
+    return str;
+  }
+  return { newState,applyMove,getLegalMoves,isInCheck,getBestMove,moveNotation,sqName,WHITE,BLACK,EMPTY,P,N,B,R,Q,K,sq,rank,file,type,color,findKing };
+})();
+</script>
+
+<script>
+function updateClock() {
+  const now=new Date(), h=String(now.getHours()).padStart(2,'0'), m=String(now.getMinutes()).padStart(2,'0');
+  const d=now.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+  document.getElementById('clock').innerHTML=`${h}:${m}<br>${d}`;
+}
+updateClock(); setInterval(updateClock,5000);
+
+(function(){
+  const win=document.getElementById('chess-window'), tb=document.getElementById('title-bar');
+  let dragging=false, dx=0, dy=0;
+  tb.addEventListener('mousedown',e=>{ if(e.target.classList.contains('win-btn'))return; dragging=true; dx=e.clientX-win.offsetLeft; dy=e.clientY-win.offsetTop; });
+  document.addEventListener('mousemove',e=>{ if(!dragging)return; let nx=e.clientX-dx,ny=e.clientY-dy; nx=Math.max(-win.offsetWidth+60,Math.min(window.innerWidth-60,nx)); ny=Math.max(0,Math.min(window.innerHeight-60,ny)); win.style.left=nx+'px'; win.style.top=ny+'px'; });
+  document.addEventListener('mouseup',()=>{ dragging=false; });
+  let resizing=false,startW,startH,startX,startY;
+  win.addEventListener('mousedown',e=>{ const r=win.getBoundingClientRect(); if(e.clientX>r.right-10&&e.clientY>r.bottom-10){resizing=true;startW=win.offsetWidth;startH=win.offsetHeight;startX=e.clientX;startY=e.clientY;e.preventDefault();} });
+  document.addEventListener('mousemove',e=>{ if(!resizing)return; win.style.width=Math.max(600,startW+e.clientX-startX)+'px'; win.style.height=Math.max(400,startH+e.clientY-startY)+'px'; ChessGame.onResize(); });
+  document.addEventListener('mouseup',()=>{ resizing=false; });
+  document.getElementById('btn-close').addEventListener('click',()=>{ win.style.display='none'; });
+  document.getElementById('btn-min').addEventListener('click',()=>{ win.style.display=win.style.display==='none'?'flex':'none'; });
+  let maximized=false,savedStyle={};
+  document.getElementById('btn-max').addEventListener('click',()=>{
+    if(!maximized){savedStyle={top:win.style.top,left:win.style.left,width:win.style.width,height:win.style.height};Object.assign(win.style,{top:'0px',left:'0px',width:'100vw',height:'calc(100vh - 30px)',borderRadius:'0'});}
+    else Object.assign(win.style,{...savedStyle,borderRadius:'8px 8px 0 0'});
+    maximized=!maximized; ChessGame.onResize();
+  });
+  document.getElementById('tb-chess-btn').addEventListener('click',()=>{ win.style.display=win.style.display==='none'?'flex':'flex'; });
+})();
+
+(function(){
+  const btn=document.getElementById('start-btn'), menu=document.getElementById('start-menu');
+  btn.addEventListener('click',e=>{ menu.classList.toggle('open'); e.stopPropagation(); });
+  document.addEventListener('click',()=>menu.classList.remove('open'));
+})();
+</script>
+
+<script>
+const ChessGame=(function(){
+  let scene,camera,renderer,raycaster,mouse;
+  let orbitRadius=14,orbitTheta=Math.PI*0.25,orbitPhi=Math.PI*0.32;
+  let orbitTarget=new THREE.Vector3(3.5,0,3.5);
+  let isDragging=false,isPanning=false,lastMouse={x:0,y:0};
+  let boardGroup,pieceGroup;
+  let squareMeshes=[];
+  let pieceMeshes={};
+  let selectedIdx=-1,legalTargets=[],legalMovesList=[];
+  let gameState=null,playerColor=Chess.WHITE,aiDepth=2,diffName='Medium',gameOver=false,flipped=false;
+  let moveHistoryData=[],lastMoveSquares=[],pendingPromotion=null,initialized=false;
+  const matLight=()=>new THREE.MeshLambertMaterial({color:0xf0d9b5});
+  const matDark=()=>new THREE.MeshLambertMaterial({color:0xb58863});
+  const matSelect=()=>new THREE.MeshLambertMaterial({color:0x88ff44,transparent:true,opacity:0.7});
+  const matTarget=()=>new THREE.MeshLambertMaterial({color:0x44aaff,transparent:true,opacity:0.6});
+  const matCheck=()=>new THREE.MeshLambertMaterial({color:0xff3300,transparent:true,opacity:0.75});
+  const matLast=()=>new THREE.MeshLambertMaterial({color:0xffee44,transparent:true,opacity:0.4});
+  const whiteMat=new THREE.MeshLambertMaterial({color:0xfafafa});
+  const blackMat=new THREE.MeshLambertMaterial({color:0x111111});
+  function cylinder(rt,rb,h,segs=12){return new THREE.CylinderGeometry(rt,rb,h,segs);}
+  function sphere(r,segs=10){return new THREE.SphereGeometry(r,segs,segs);}
+  function box(w,h,d){return new THREE.BoxGeometry(w,h,d);}
+  function cone(r,h,segs=10){return new THREE.ConeGeometry(r,h,segs);}
+  function buildMesh(geos_offsets,mat){
+    const group=new THREE.Group();
+    for(const [geo,[ox,oy,oz],rxyz] of geos_offsets){
+      const m=new THREE.Mesh(geo,mat); m.position.set(ox,oy,oz);
+      if(rxyz)m.rotation.set(...rxyz); m.castShadow=true; group.add(m);
+    }
+    return group;
+  }
+  function makePiece(t,c){
+    const mat=c===Chess.WHITE?whiteMat:blackMat;
+    const go=(geo,ox,oy,oz,rx,ry,rz)=>[geo,[ox,oy,oz],rx!==undefined?[rx,ry,rz]:undefined];
+    let parts;
+    if(t===Chess.P)parts=[go(cylinder(0.2,0.23,0.1,12),0,0.05,0),go(cylinder(0.09,0.17,0.22,12),0,0.27,0),go(sphere(0.19,10),0,0.52,0)];
+    else if(t===Chess.N)parts=[go(cylinder(0.22,0.25,0.12,12),0,0.06,0),go(cylinder(0.11,0.18,0.3,12),0,0.27,0),go(cylinder(0.13,0.11,0.32,12),0,0.55,-0.22,0,0,0),go(box(0.26,0.28,0.16),0.04,0.68,-0.04),go(box(0.06,0.1,0.06),0.05,0.84,0.04)];
+    else if(t===Chess.B)parts=[go(cylinder(0.22,0.25,0.12,12),0,0.06,0),go(cylinder(0.08,0.18,0.48,12),0,0.36,0),go(sphere(0.15,10),0,0.68,0),go(cone(0.06,0.17,10),0,0.92,0)];
+    else if(t===Chess.R){const mg=box(0.08,0.14,0.08);parts=[go(cylinder(0.23,0.26,0.12,12),0,0.06,0),go(cylinder(0.19,0.21,0.44,12),0,0.34,0),go(cylinder(0.22,0.2,0.1,12),0,0.61,0)];for(let i=0;i<4;i++){const a=i*Math.PI/2+Math.PI/4;parts.push(go(mg,Math.cos(a)*0.13,0.76,Math.sin(a)*0.13));}}
+    else if(t===Chess.Q){parts=[go(cylinder(0.22,0.26,0.12,12),0,0.06,0),go(cylinder(0.11,0.19,0.48,12),0,0.36,0),go(sphere(0.17,10),0,0.67,0),go(cylinder(0.13,0.12,0.22,12),0,0.87,0),go(sphere(0.09,8),0,1.04,0)];for(let i=0;i<5;i++){const a=i*(2*Math.PI/5)-Math.PI/2;parts.push(go(sphere(0.05,6),Math.cos(a)*0.14,1.1,Math.sin(a)*0.14));}}
+    else if(t===Chess.K)parts=[go(cylinder(0.23,0.27,0.12,12),0,0.06,0),go(cylinder(0.13,0.21,0.52,12),0,0.38,0),go(sphere(0.17,10),0,0.72,0),go(cylinder(0.035,0.035,0.28,8),0,0.99,0),go(box(0.2,0.055,0.055),0,1.07,0)];
+    else parts=[go(box(0.3,0.5,0.3),0,0.25,0)];
+    return buildMesh(parts,mat);
+  }
+  function b2w(rank,file_){const r=flipped?7-rank:rank,f=flipped?7-file_:file_;return new THREE.Vector3(f,0,r);}
+  function init(){
+    const cont=document.getElementById('three-canvas-container'),W=cont.clientWidth,H=cont.clientHeight;
+    scene=new THREE.Scene(); scene.background=new THREE.Color(0x1a1a2e); scene.fog=new THREE.FogExp2(0x1a1a2e,0.025);
+    camera=new THREE.PerspectiveCamera(45,W/H,0.1,100); updateCamera();
+    renderer=new THREE.WebGLRenderer({antialias:true}); renderer.setSize(W,H); renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+    renderer.shadowMap.enabled=true; renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+    document.getElementById('three-canvas-container').appendChild(renderer.domElement);
+    raycaster=new THREE.Raycaster(); mouse=new THREE.Vector2();
+    scene.add(new THREE.AmbientLight(0xffffff,0.45));
+    const dir=new THREE.DirectionalLight(0xfff5e0,0.85); dir.position.set(8,15,10); dir.castShadow=true;
+    dir.shadow.mapSize.set(2048,2048); dir.shadow.camera.left=-14; dir.shadow.camera.right=14; dir.shadow.camera.top=14; dir.shadow.camera.bottom=-14; dir.shadow.camera.far=60;
+    scene.add(dir);
+    const fill=new THREE.PointLight(0x6090ff,0.4,40); fill.position.set(-5,10,-3); scene.add(fill);
+    buildBoard(); placePieces();
+    const cv=renderer.domElement;
+    cv.addEventListener('mousedown',onDown); cv.addEventListener('mousemove',onMove); cv.addEventListener('mouseup',onUp);
+    cv.addEventListener('wheel',onWheel,{passive:true}); cv.addEventListener('contextmenu',e=>e.preventDefault());
+    animate(); initialized=true;
+  }
+  function updateCamera(){const x=orbitTarget.x+orbitRadius*Math.sin(orbitPhi)*Math.sin(orbitTheta),y=orbitTarget.y+orbitRadius*Math.cos(orbitPhi),z=orbitTarget.z+orbitRadius*Math.sin(orbitPhi)*Math.cos(orbitTheta);camera.position.set(x,y,z);camera.lookAt(orbitTarget);}
+  function buildBoard(){
+    if(boardGroup)scene.remove(boardGroup);
+    boardGroup=new THREE.Group(); scene.add(boardGroup);
+    const baseMat=new THREE.MeshLambertMaterial({color:0x5c3317});
+    const base=new THREE.Mesh(new THREE.BoxGeometry(9.6,0.35,9.6),baseMat); base.position.set(3.5,-0.2,3.5); base.receiveShadow=true; boardGroup.add(base);
+    squareMeshes=[];
+    for(let r=0;r<8;r++)for(let f=0;f<8;f++){
+      const light=(r+f)%2===0,geo=new THREE.BoxGeometry(1,0.06,1),mat=light?matLight():matDark();
+      const mesh=new THREE.Mesh(geo,mat); const wp=b2w(r,f); mesh.position.set(wp.x,0,wp.z);
+      mesh.receiveShadow=true; mesh.userData={sqIdx:Chess.sq(r,f),rank:r,file:f,isLight:light};
+      squareMeshes.push(mesh); boardGroup.add(mesh);
+    }
+  }
+  function placePieces(){
+    if(pieceGroup)scene.remove(pieceGroup);
+    pieceGroup=new THREE.Group(); scene.add(pieceGroup); pieceMeshes={};
+    for(let idx=0;idx<64;idx++){const p=gameState.board[idx];if(!p)continue;const mesh=makePiece(Chess.type(p),Chess.color(p));const wp=b2w(Chess.rank(idx),Chess.file(idx));mesh.position.set(wp.x,0.06,wp.z);mesh.userData={sqIdx:idx};pieceMeshes[idx]=mesh;pieceGroup.add(mesh);}
+  }
+  function colorSquares(){
+    const checkKing=Chess.isInCheck(gameState,gameState.turn)?Chess.findKing(gameState.board,gameState.turn):-1;
+    for(const m of squareMeshes){const idx=m.userData.sqIdx,light=m.userData.isLight;if(idx===checkKing)m.material=matCheck();else if(idx===selectedIdx)m.material=matSelect();else if(legalTargets.includes(idx))m.material=matTarget();else if(lastMoveSquares.includes(idx))m.material=matLast();else m.material=light?matLight():matDark();}
+  }
+  let mouseStart=null;
+  function onDown(e){mouseStart={x:e.clientX,y:e.clientY};if(e.button===2){isDragging=true;lastMouse={x:e.clientX,y:e.clientY};}if(e.button===1){isPanning=true;lastMouse={x:e.clientX,y:e.clientY};e.preventDefault();}}
+  function onMove(e){
+    if(isDragging){const dx=e.clientX-lastMouse.x,dy=e.clientY-lastMouse.y;orbitTheta-=dx*0.008;orbitPhi=Math.max(0.15,Math.min(Math.PI/2-0.05,orbitPhi-dy*0.008));updateCamera();lastMouse={x:e.clientX,y:e.clientY};}
+    if(isPanning){const dx=e.clientX-lastMouse.x,dy=e.clientY-lastMouse.y;const right=new THREE.Vector3(Math.cos(orbitTheta),0,-Math.sin(orbitTheta)),fwd=new THREE.Vector3(Math.sin(orbitTheta),0,Math.cos(orbitTheta));orbitTarget.addScaledVector(right,-dx*0.015).addScaledVector(fwd,dy*0.015);updateCamera();lastMouse={x:e.clientX,y:e.clientY};}
+    const sq=pickSquare(e); document.getElementById('sb-coords').textContent=sq?Chess.sqName(sq.userData.sqIdx):'';
+  }
+  function onUp(e){
+    isDragging=isPanning=false;
+    if(e.button===0){const d=mouseStart?Math.hypot(e.clientX-mouseStart.x,e.clientY-mouseStart.y):99;if(d<6){const sq=pickSquare(e);if(sq)handleClick(sq.userData.sqIdx);else{selectedIdx=-1;legalTargets=[];colorSquares();}}}
+  }
+  function onWheel(e){orbitRadius=Math.max(5,Math.min(26,orbitRadius+e.deltaY*0.025));updateCamera();}
+  function pickSquare(e){const cv=renderer.domElement,rect=cv.getBoundingClientRect();mouse.x=((e.clientX-rect.left)/rect.width)*2-1;mouse.y=-((e.clientY-rect.top)/rect.height)*2+1;raycaster.setFromCamera(mouse,camera);const hits=raycaster.intersectObjects(squareMeshes);return hits.length?hits[0].object:null;}
+  function handleClick(idx){
+    if(gameOver||pendingPromotion)return;
+    if(selectedIdx>=0&&legalTargets.includes(idx)){
+      const move=legalMovesList.find(m=>m.from===selectedIdx&&m.to===idx);
+      if(move){
+        if(move.flags==='promo'){pendingPromotion=move;window.__promoResolve=(pt)=>{pendingPromotion=null;doMove(move,pt);};document.getElementById('promo-dialog').classList.add('open');document.querySelectorAll('.promo-piece').forEach((el,i)=>{el.textContent=['♛','♜','♝','♞'][i];});}
+        else doMove(move);
+        return;
+      }
+    }
+    selectedIdx=-1;legalTargets=[];
+    const p=gameState.board[idx];
+    if(p&&Chess.color(p)===playerColor&&Chess.color(p)===gameState.turn&&!gameOver){selectedIdx=idx;legalTargets=legalMovesList.filter(m=>m.from===idx).map(m=>m.to);}
+    colorSquares();
+  }
+  function doMove(move,promoPiece){
+    const notation=Chess.moveNotation(gameState,move),wasWhite=gameState.turn===Chess.WHITE;
+    const {newState}=Chess.applyMove(gameState,move,promoPiece);
+    lastMoveSquares=[move.from,move.to]; gameState=newState;
+    if(wasWhite)moveHistoryData.push({w:notation,b:''});
+    else if(moveHistoryData.length)moveHistoryData[moveHistoryData.length-1].b=notation;
+    else moveHistoryData.push({w:'...',b:notation});
+    renderHistory(); placePieces(); legalMovesList=Chess.getLegalMoves(gameState);
+    selectedIdx=-1;legalTargets=[]; colorSquares(); updateStatus();
+    if(!legalMovesList.length){
+      gameOver=true;
+      if(Chess.isInCheck(gameState,gameState.turn)){const winner=gameState.turn===Chess.WHITE?'Black':'White';flash(`☆ Checkmate! ${winner} wins! ☆`);document.getElementById('st-status').textContent=`Checkmate – ${winner} wins`;document.getElementById('sb-msg').textContent=`Checkmate! ${winner} wins`;}
+      else{flash('Stalemate — Draw!');document.getElementById('st-status').textContent='Stalemate – Draw';}
+      return;
+    }
+    if(gameState.turn!==playerColor)setTimeout(runAI,250);
+  }
+  function runAI(){const ai=document.getElementById('ai-thinking');ai.classList.add('visible');setTimeout(()=>{const mv=Chess.getBestMove(gameState,aiDepth);ai.classList.remove('visible');if(mv)doMove(mv);},30);}
+  function flash(msg){const el=document.getElementById('game-msg');el.textContent=msg;el.classList.add('visible');setTimeout(()=>el.classList.remove('visible'),4500);}
+  function updateStatus(){
+    document.getElementById('st-turn').textContent=gameState.turn===Chess.WHITE?'White':'Black';
+    const inCheck=Chess.isInCheck(gameState,gameState.turn);
+    if(inCheck){document.getElementById('st-status').textContent='Check!';document.getElementById('sb-msg').textContent='Check!';flash('Check!');}
+    else{document.getElementById('st-status').textContent='Playing';document.getElementById('sb-msg').textContent=gameState.turn===Chess.WHITE?"White's turn":"Black's turn";}
+  }
+  function renderHistory(){const el=document.getElementById('move-list');el.innerHTML=moveHistoryData.map((p,i)=>`<div class="move-pair"><span class="move-num">${i+1}.</span><span class="move-w">${p.w||''}</span><span class="move-b">${p.b||''}</span></div>`).join('');el.scrollTop=el.scrollHeight;}
+  function animate(){requestAnimationFrame(animate);const t=Date.now()*0.001;for(const[idxStr,mesh]of Object.entries(pieceMeshes)){const idx=+idxStr,isSel=idx===selectedIdx,tY=isSel?0.28+Math.sin(t*4)*0.06:0.06;mesh.position.y+=(tY-mesh.position.y)*0.18;}renderer.render(scene,camera);}
+  function start(color,depth,dname){
+    playerColor=color==='white'?Chess.WHITE:Chess.BLACK; aiDepth=depth; diffName=dname;
+    gameState=Chess.newState(); gameOver=false; pendingPromotion=null;
+    selectedIdx=-1;legalTargets=[];lastMoveSquares=[];moveHistoryData=[];
+    flipped=playerColor===Chess.BLACK;
+    document.getElementById('st-player').textContent=color==='white'?'White':'Black';
+    document.getElementById('st-diff').textContent=dname;
+    document.getElementById('st-turn').textContent='White';
+    document.getElementById('st-status').textContent='Playing';
+    document.getElementById('sb-msg').textContent="White's turn";
+    document.getElementById('move-list').innerHTML='';
+    legalMovesList=Chess.getLegalMoves(gameState);
+    if(!initialized){
+      const bar=document.getElementById('load-bar');let p=0;
+      const iv=setInterval(()=>{p=Math.min(100,p+Math.random()*30);bar.style.width=p+'%';if(p>=100){clearInterval(iv);setTimeout(()=>{document.getElementById('loading-screen').style.display='none';init();colorSquares();if(playerColor===Chess.BLACK)setTimeout(runAI,600);},150);}},70);
+    }else{buildBoard();placePieces();colorSquares();if(playerColor===Chess.BLACK)setTimeout(runAI,600);}
+  }
+  function newGame(){gameOver=false;pendingPromotion=null;document.getElementById('game-screen').classList.remove('active');document.getElementById('main-menu-screen').style.display='flex';document.getElementById('sb-msg').textContent='Ready';document.getElementById('promo-dialog').classList.remove('open');}
+  function flipBoard(){flipped=!flipped;buildBoard();placePieces();colorSquares();orbitTheta+=Math.PI;updateCamera();}
+  function onResize(){const cont=document.getElementById('three-canvas-container'),W=cont.clientWidth,H=cont.clientHeight;if(W>0&&H>0&&renderer){camera.aspect=W/H;camera.updateProjectionMatrix();renderer.setSize(W,H);}}
+  return{start,newGame,flipBoard,onResize,get renderer(){return renderer}};
+})();
+
+document.getElementById('start-game-btn').onclick=()=>{
+  const color=document.querySelector('input[name=color]:checked').value;
+  const sel=document.getElementById('difficulty-select');
+  const d={'1':'Easy','2':'Medium','3':'Hard','5':'Unbeatable'};
+  document.getElementById('main-menu-screen').style.display='none';
+  document.getElementById('game-screen').classList.add('active');
+  ChessGame.start(color,+sel.value,d[sel.value]);
+};
+document.getElementById('btn-new-game').onclick=()=>ChessGame.newGame();
+document.getElementById('btn-flip').onclick=()=>ChessGame.flipBoard();
+document.getElementById('btn-undo').onclick=()=>{const el=document.getElementById('game-msg');el.textContent='Undo: start a new game to reset.';el.classList.add('visible');setTimeout(()=>el.classList.remove('visible'),2500);};
+document.querySelectorAll('.promo-piece').forEach(el=>{el.onclick=()=>{document.getElementById('promo-dialog').classList.remove('open');const map={q:Chess.Q,r:Chess.R,b:Chess.B,n:Chess.N};if(window.__promoResolve){window.__promoResolve(map[el.dataset.piece]);window.__promoResolve=null;}};});
+new ResizeObserver(()=>ChessGame.onResize()).observe(document.getElementById('three-canvas-container'));
+</script>
+</body>
+</html>
