@@ -3,7 +3,7 @@
 # 3D Chess
 
 <!-- Oluşturduğumuz 1280x720 Kapak Resmi -->
-<img src="cover.png" width="680" alt="3D Chess Cover">
+<img src="<img width="1024" height="1024" alt="1" src="https://github.com/user-attachments/assets/a39f2d6b-edac-49ae-9ac5-a95793b1058e" />" width="680" alt="3D Chess Cover">
 
 <!-- Resim ile buton arasındaki mesafeyi açmak için alt satır boşlukları -->
 <br><br><br><br>
